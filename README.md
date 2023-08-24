@@ -14,20 +14,37 @@ This package must be installed in the same workspace as the 3DS Touch Haptic Dev
 |Open Haptics              |     Version 3.4   |
 ---
 
-**[IMPORTANT] The following instructions must be completed before installing this package**
+**Required: Install the following ROS packages**
+1. [jhu-saw/sawSensablePhantom](https://github.com/jhu-saw/sawSensablePhantom)
+2. [UniversalRobots/Universal_Robots_ROS_Driver](https://github.com/UniversalRobots/Universal_Robots_ROS_Driver)
+3. [universal_robot](https://github.com/ros-industrial/universal_robot)
 
-Install the following device and ros drivers: https://github.com/jhu-saw/sawSensablePhantom
-
-Download this repository into the same catkin_ws/src folder used above.
+Clone these repositories into your ros workspace src/ directory.
 
 Use `catkin build` to compile everything
 
-## How to Run
+## How to use this codebase
+### 0. Launch UR5 in Gazebo
+In all new terminal windows, source ROS + your workspace
 
-To run any of the scripts in ROS:
+In a new ternimal:
+```
+roscore
+```
+In a new ternimal:
+```
+roslaunch ur_gazebo ur5_bringup.launch
+```
+This will launch a gazebo window with the UR5 robot
 
+### 1. follow_traj
+This ROS Node will move a gazebo simulation of the UR5 using a configuration file consisting of the joint position trajectory of the robot.
+
+[Trajectory Generation](https://github.com/stevens-armlab/teleop_python_utils) : The linked repo has instructions to generate a configuration file that is needed to use this ROS Node. This file must be saved in [config/](config/)
+
+A sample file called ```traj1.yaml``` is provided.
 ```Shell
-rosrun teleop_core <file-name>.py
+rosrun teleop_core follow_traj.py --config traj1
 ```
 ### Notes
 This package is still under development.
