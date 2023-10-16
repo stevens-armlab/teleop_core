@@ -3,18 +3,24 @@
 import rospy
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Float32MultiArray
 import PyKDL
 from tf_conversions import posemath
 
+# Button Press
 PRESS1 = None
 PRESS2 = None
-ANCH = None
-COUNT = None
-VIEWER_R_ANCH = None
-VIEWER_R_ROBOTBASE = None
-ROBOTBASE_R_TCP0 = None     # This should be set at the anchoring moment
 
+# Rotation Frames
+VIEWER_R_ROBOTBASE = PyKDL.Frame()
 VIEWER_R_HAPTIC = PyKDL.Frame(PyKDL.Rotation(1,0,0, 0,0,-1, 0,1,0))     # The Matrix that rewrites a vector in the haptic base frame, to a vector in the Viewer base frame
+
+# Teleop Anchor event
+ANCH = None
+TCP0 = None
+ROBOTBASE_R_TCP0 = None     # This should be set at the anchoring moment
+TCP0_R_ANCH = None
+COUNT = None
 
 def button1_callback(msg):
     """
@@ -46,6 +52,20 @@ def button2_callback(msg):
         ANCH = None
         VIEWER_R_ANCH = None
 
+def arm_position_callback(msg):
+    """
+    Subscriber callback function to get the pose of the underwater arm
+    """
+    # --------UNDER DEVELOPMENT--------- #
+
+    global TCP0, ROBOTBASE_R_TCP0
+    if PRESS2 == 1:
+        TCP0 = msg.data
+        ROBOTBASE_R_TCP0 = PyKDL.Frame(msg.data.M)
+    else:
+        TCP0 = None
+        ROBOTBASE_R_TCP0 = None
+
 def cp_callback(msg):
     """
     Subscriber callback function
@@ -53,7 +73,9 @@ def cp_callback(msg):
 
     The haptic device publishes this message at a freq of approximately 487 Hz
     """
-    global ANCH, COUNT, VIEWER_R_ANCH
+    # --------UNDER DEVELOPMENT--------- #
+    
+    global ANCH, COUNT, TCP0_R_ANCH
     if PRESS2 == 1:
         if ANCH is not None:
             COUNT += 1
@@ -63,18 +85,18 @@ def cp_callback(msg):
                 # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
                 rel_cmd = ANCH.Inverse() * f
 
-                # RELATIVE COMMANDED POSE [As represented in the Viewer/Operator Base frame]
-                viewer_rel_cmd = VIEWER_R_ANCH * rel_cmd * VIEWER_R_ANCH.Inverse()
-                rospy.loginfo(viewer_rel_cmd)
+                # RELATIVE COMMANDED POSE [As represented in the Robot TCP frame]
+                command = TCP0_R_ANCH * rel_cmd * TCP0_R_ANCH.Inverse()
 
+                pub.publish(command)
             else:
                 pass
         else:
             ANCH = posemath.fromMsg(msg.pose)                   # Converts the pose message to a KDL frame
             haptic_R_anch = PyKDL.Frame(ANCH.M)                 # The Matrix that can rewrite the relative commanded pose to the haptic base frame
             VIEWER_R_ANCH = VIEWER_R_HAPTIC * haptic_R_anch     # The Matrix that can rewrite the relative commanded pose to the Viewer base frame
-            rospy.loginfo(VIEWER_R_ANCH)
-
+            TCP0_R_ANCH = ROBOTBASE_R_TCP0.Inverse() * VIEWER_R_ROBOTBASE.Inverse() * VIEWER_R_ANCH
+            
             COUNT = 0
 
 if __name__ == '__main__':
@@ -86,9 +108,8 @@ if __name__ == '__main__':
     sub1 = rospy.Subscriber("/arm/button1", Joy , callback=button1_callback)
     sub2 = rospy.Subscriber("/arm/button2", Joy , callback=button2_callback)
     sub3 = rospy.Subscriber("/arm/measured_cp", PoseStamped , callback=cp_callback)
+    sub4 = rospy.Subscriber("/arm_position", Float32MultiArray, callback=arm_position_callback)
 
-    rate = rospy.Rate(1)
+    pub = rospy.Publisher('Xd1', Float32MultiArray, queue_size=10)
 
-    while not rospy.is_shutdown():
-        # Do something
-        rate.sleep()
+    rospy.spin()
