@@ -18,7 +18,8 @@ PRESS2 = None
 
 # Rotation Frames
 VIEWER_R_HAPTIC = PyKDL.Frame(PyKDL.Rotation(1,0,0, 0,0,-1, 0,1,0))     # The Matrix that rewrites a vector in the haptic base frame, to a vector in the Viewer base frame
-VIEWER_R_ROBOTBASE = PyKDL.Frame()
+# VIEWER_R_ROBOTBASE = PyKDL.Frame()
+VIEWER_R_ROBOTBASE = PyKDL.Frame(PyKDL.Rotation(0,-1,0, 1,0,0, 0,0,1))
 
 # Teleop Anchor event
 ANCH = None
@@ -58,7 +59,7 @@ def button2_callback(msg):
         PRESS2 = 0
         ANCH = None
 
-def Xd1_callback(msg):
+def sub4_callback(msg):
     """
     Subscriber callback function to get the pose of the underwater arm
     Sets the TCP variable to a PyKDL frame of the Manipulators current pose
@@ -69,7 +70,7 @@ def Xd1_callback(msg):
     axis = rot  / angle
     axis = PyKDL.Vector(axis[0], axis[1], axis[2])
 
-    TCP = PyKDL.Frame(PyKDL.Rot(axis, angle), PyKDL.Vector(msg.data[0], msg.data[1], msg.data[2]))
+    TCP = PyKDL.Frame(PyKDL.Rotation.Rot(axis, angle), PyKDL.Vector(msg.data[0], msg.data[1], msg.data[2]))
 
 def cp_callback(msg):
     """
@@ -82,22 +83,22 @@ def teleop():
     global ANCH, COUNT, TCP0, TCP0_R_ANCH, LEFT_POSE
     if PRESS2 == 1:
         if ANCH is not None:
-            COUNT += 1
-            if COUNT % 487 == 0: # Does the computation roughly every second (~ 487 Hz)
+            # COUNT += 1
+            # if COUNT % 487 == 0: # Does the computation roughly every second (~ 487 Hz)
                 
-                # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
-                rel_cmd = ANCH.Inverse() * LEFT_POSE
+            # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
+            rel_cmd = ANCH.Inverse() * LEFT_POSE
 
-                # RELATIVE COMMANDED POSE [As represented in the Robot TCP0 frame]
-                command = TCP0_R_ANCH * rel_cmd * TCP0_R_ANCH.Inverse()
-                
-                # Convert to Float32MultiArray
-                rot = command.M.GetRot()
-                array = Float32MultiArray()
-                array.data = [command.p.x(), command.p.y(), command.p.z(), rot.x(), rot.y(), rot.z()]
-                pub.publish(array)
-            else:
-                pass
+            # RELATIVE COMMANDED POSE [As represented in the Robot TCP0 frame]
+            command = TCP0_R_ANCH * rel_cmd * TCP0_R_ANCH.Inverse()
+            command = TCP0 * command
+            # Convert to Float32MultiArray
+            rot = command.M.GetRot()
+            array = Float32MultiArray()
+            array.data = [command.p.x(), command.p.y(), command.p.z(), rot.x(), rot.y(), rot.z()]
+            pub.publish(array)
+            # else:
+            #     pass
         else:
             TCP0 = TCP                                          
             ANCH = LEFT_POSE                   # Converts the pose message to a KDL frame
@@ -119,9 +120,9 @@ if __name__ == '__main__':
     sub1 = rospy.Subscriber("/left/button1", Joy , callback=button1_callback)
     sub2 = rospy.Subscriber("/left/button2", Joy , callback=button2_callback)
     sub3 = rospy.Subscriber("/left/measured_cp", PoseStamped , callback=cp_callback)
-    sub4 = rospy.Subscriber("/Xd1", Float32MultiArray, callback=Xd1_callback)
+    sub4 = rospy.Subscriber("/arm1/pose", Float32MultiArray, callback=sub4_callback)
 
-    pub = rospy.Publisher('/arm1/pose', Float32MultiArray, queue_size=10)
+    pub = rospy.Publisher('/Xd1', Float32MultiArray, queue_size=10)
 
     rate = rospy.Rate(100)
 
