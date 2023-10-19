@@ -8,6 +8,10 @@ import PyKDL
 from tf_conversions import posemath
 import numpy as np
 
+# Scaling Factor
+cp_SF = 1
+or_SF = 0.5
+
 # Haptic Device Poses
 LEFT_POSE = None
 RIGHT_POSE = None
@@ -133,7 +137,15 @@ def sub8_cb(msg):
 
     TCP_R = PyKDL.Frame(PyKDL.Rotation.Rot(axis, angle), PyKDL.Vector(msg.data[0], msg.data[1], msg.data[2]))
 
+def scale(pose):
+    """
+    Applies the rotational and translational scaling factor to the relative command
+    """
+    tmp_rot = pose.M.GetRot()
+    rot_ang = tmp_rot.Normalize()
+    rot_axis = tmp_rot / rot_ang
 
+    return PyKDL.Frame(PyKDL.Rotation.Rot(rot_axis, tmp_ang*or_SF), pose.p*cp_SF)
 
 def teleop_L():
     global ANCH_L, TCP0_L, TCP0_L_ANCH, LEFT_POSE
@@ -142,6 +154,7 @@ def teleop_L():
             
             # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
             rel_cmd = ANCH_L.Inverse() * LEFT_POSE
+            rel_cmd = scale(rel_cmd)
 
             # RELATIVE COMMANDED POSE [As represented in the Robot TCP0 frame]
             command = TCP0_L_ANCH * rel_cmd * TCP0_L_ANCH.Inverse()
@@ -168,6 +181,7 @@ def teleop_R():
             
             # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
             rel_cmd = ANCH_R.Inverse() * RIGHT_POSE
+            rel_cmd = scale(rel_cmd)
 
             # RELATIVE COMMANDED POSE [As represented in the Robot TCP0 frame]
             command = TCP0_R_ANCH * rel_cmd * TCP0_R_ANCH.Inverse()
