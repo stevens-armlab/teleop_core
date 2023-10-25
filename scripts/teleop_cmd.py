@@ -10,7 +10,7 @@ import numpy as np
 
 # Scaling Factor
 cp_SF = 1
-or_SF = 0.5
+or_SF = 1
 
 # Haptic Device Poses
 LEFT_POSE = None
@@ -48,10 +48,10 @@ def sub1_cb(msg):
     """
     global PRESS1_L, ANCH_L
     if msg.buttons[0] == 1:
-        rospy.loginfo('Leader: Button1_L Engaged!')
+        # rospy.loginfo('Leader: Button1_L Engaged!')
         PRESS1_L = 1
     else:
-        rospy.loginfo('Leader: Button1_L Disengaged!')
+        # rospy.loginfo('Leader: Button1_L Disengaged!')
         PRESS1_L = 0
         ANCH_L = None
 
@@ -62,10 +62,10 @@ def sub2_cb(msg):
     """
     global PRESS2_L, ANCH_L
     if msg.buttons[0] == 1:
-        rospy.loginfo('Leader: Button2_L Engaged!')
+        # rospy.loginfo('Leader: Button2_L Engaged!')
         PRESS2_L = 1
     else:
-        rospy.loginfo('Leader: Button2_L Disengaged!')
+        # rospy.loginfo('Leader: Button2_L Disengaged!')
         PRESS2_L = 0
         ANCH_L = None
 
@@ -83,10 +83,10 @@ def sub4_cb(msg):
     """
     global PRESS1_R, ANCH_R
     if msg.buttons[0] == 1:
-        rospy.loginfo('Leader: Button1_R Engaged!')
+        # rospy.loginfo('Leader: Button1_R Engaged!')
         PRESS1_R = 1
     else:
-        rospy.loginfo('Leader: Button1_R Disengaged!')
+        # rospy.loginfo('Leader: Button1_R Disengaged!')
         PRESS1_R = 0
         ANCH_R = None
 
@@ -97,10 +97,10 @@ def sub5_cb(msg):
     """
     global PRESS2_R, ANCH_R
     if msg.buttons[0] == 1:
-        rospy.loginfo('Leader: Button2_R Engaged!')
+        # rospy.loginfo('Leader: Button2_R Engaged!')
         PRESS2_R = 1
     else:
-        rospy.loginfo('Leader: Button2_R Disengaged!')
+        # rospy.loginfo('Leader: Button2_R Disengaged!')
         PRESS2_R = 0
         ANCH_R = None
 
@@ -143,9 +143,9 @@ def scale(pose):
     """
     tmp_rot = pose.M.GetRot()
     rot_ang = tmp_rot.Normalize()
-    rot_axis = tmp_rot / rot_ang
-
-    return PyKDL.Frame(PyKDL.Rotation.Rot(rot_axis, tmp_ang*or_SF), pose.p*cp_SF)
+    if rot_ang != 0:
+        tmp_rot = tmp_rot / rot_ang
+    return PyKDL.Frame(PyKDL.Rotation.Rot(tmp_rot, rot_ang*or_SF), pose.p*cp_SF)
 
 def teleop_L():
     global ANCH_L, TCP0_L, TCP0_L_ANCH, LEFT_POSE
@@ -192,7 +192,7 @@ def teleop_R():
             array.data = [command.p.x(), command.p.y(), command.p.z(), rot.x(), rot.y(), rot.z()]
             pub2.publish(array)
         else:
-            TCP0_R = TCP_R                                          
+            TCP0_R = TCP_R
             ANCH_R = RIGHT_POSE                   # Converts the pose message to a KDL frame
             
             haptic_R_anch = PyKDL.Frame(ANCH_R.M)                 # The Matrix that can rewrite the relative commanded pose to the haptic base frame
@@ -200,8 +200,6 @@ def teleop_R():
             ROBOTBASE_R_TCP0 = PyKDL.Frame(TCP0_R.M)
 
             TCP0_R_ANCH = ROBOTBASE_R_TCP0.Inverse() * VIEWER_R_ROBOTBASE.Inverse() * VIEWER_R_ANCH
- 
-
 
 
 if __name__ == '__main__':
