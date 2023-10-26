@@ -41,19 +41,29 @@ TCP_L = None
 TCP_R = None
 COUNT = None
 
+# Gripper States
+L_GRIP = -1
+R_GRIP = -1
+
 def sub1_cb(msg):
     """
     Subscriber callback function
     Returns button press event for Button1 in 3DS Haptic Touch Device
     """
-    global PRESS1_L, ANCH_L
+    global L_GRIP
     if msg.buttons[0] == 1:
         # rospy.loginfo('Leader: Button1_L Engaged!')
-        PRESS1_L = 1
-    else:
-        # rospy.loginfo('Leader: Button1_L Disengaged!')
-        PRESS1_L = 0
-        ANCH_L = None
+        if L_GRIP == 1:
+            L_GRIP = 0
+            # rospy.loginfo('Left Gripper: Opening')
+        else:
+            L_GRIP = 1
+            # rospy.loginfo('Left Gripper: Closing')
+        # PRESS1_L = 1
+    # else:
+    #     # rospy.loginfo('Leader: Button1_L Disengaged!')
+    #     PRESS1_L = 0
+    #     ANCH_L = None
 
 def sub2_cb(msg):
     """
@@ -81,14 +91,20 @@ def sub4_cb(msg):
     Subscriber callback function
     Returns button press event for Button1 in 3DS Haptic Touch Device
     """
-    global PRESS1_R, ANCH_R
+    global R_GRIP
     if msg.buttons[0] == 1:
         # rospy.loginfo('Leader: Button1_R Engaged!')
-        PRESS1_R = 1
-    else:
-        # rospy.loginfo('Leader: Button1_R Disengaged!')
-        PRESS1_R = 0
-        ANCH_R = None
+        if R_GRIP == 1:
+            R_GRIP = 0
+            # rospy.loginfo('Right Gripper: Opening')
+        else:
+            R_GRIP = 1
+            # rospy.loginfo('Right Gripper: Closing')
+    #     PRESS1_R = 1
+    # else:
+    #     # rospy.loginfo('Leader: Button1_R Disengaged!')
+    #     PRESS1_R = 0
+    #     ANCH_R = None
 
 def sub5_cb(msg):
     """
@@ -201,6 +217,16 @@ def teleop_R():
 
             TCP0_R_ANCH = ROBOTBASE_R_TCP0.Inverse() * VIEWER_R_ROBOTBASE.Inverse() * VIEWER_R_ANCH
 
+def gripper():
+    """
+    Publishes the desired gripper state
+    1 : Close the gripper (Grasp)
+    2 : Open the gripper (Release)
+    """
+    array = Float32MultiArray()
+    array.data = [L_GRIP, R_GRIP]
+    pub3.publish(array)
+
 
 if __name__ == '__main__':
 
@@ -221,10 +247,12 @@ if __name__ == '__main__':
 
     pub1 = rospy.Publisher('/Xd1', Float32MultiArray, queue_size=10)
     pub2 = rospy.Publisher('/Xd2', Float32MultiArray, queue_size=10)
+    pub3 = rospy.Publisher('/grippers', Float32MultiArray, queue_size=10)
 
     rate = rospy.Rate(100)
 
     while not rospy.is_shutdown():
         teleop_L()
         teleop_R()
+        gripper()
         rate.sleep()
