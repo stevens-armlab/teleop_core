@@ -2,7 +2,7 @@
 
 import rospy
 from sensor_msgs.msg import Joy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from std_msgs.msg import Float32MultiArray
 import PyKDL
 from tf_conversions import posemath
@@ -35,6 +35,8 @@ TCP0_L_ANCH = None          # To be set during the anchoring event
 ANCH_R = None
 TCP0_R = None
 TCP0_R_ANCH = None
+mac_ANCH_L = None
+mac_ANCH_R = None
 
 # Manipulator current pose
 TCP_L = None
@@ -50,29 +52,31 @@ def sub1_cb(msg):
     Subscriber callback function
     Returns button press event for Button1 in 3DS Haptic Touch Device
     """
-    global L_GRIP
+    global L_GRIP, PRESS1_L, mac_ANCH_L
     if msg.buttons[0] == 1:
-        # rospy.loginfo('Leader: Button1_L Engaged!')
-        if L_GRIP == 1:
-            L_GRIP = 0
-            # rospy.loginfo('Left Gripper: Opening')
-        else:
-            L_GRIP = 1
-            # rospy.loginfo('Left Gripper: Closing')
-        # PRESS1_L = 1
-    # else:
-    #     # rospy.loginfo('Leader: Button1_L Disengaged!')
-    #     PRESS1_L = 0
-    #     ANCH_L = None
+        if PRESS2_L == 1:
+            if L_GRIP == 1:
+                L_GRIP = 0
+            else:
+                L_GRIP = 1
+        PRESS1_L = 1
+    else:
+        PRESS1_L = 0
+        mac_ANCH_L = None
 
 def sub2_cb(msg):
     """
     Subscriber callback function
     Returns button press event for Button2 in 3DS Haptic Touch Device
     """
-    global PRESS2_L, ANCH_L
+    global PRESS2_L, ANCH_L, L_GRIP
     if msg.buttons[0] == 1:
         # rospy.loginfo('Leader: Button2_L Engaged!')
+        if PRESS1_L == 1:
+            if L_GRIP == 1:
+                L_GRIP = 0
+            else:
+                L_GRIP = 1
         PRESS2_L = 1
     else:
         # rospy.loginfo('Leader: Button2_L Disengaged!')
@@ -91,29 +95,31 @@ def sub4_cb(msg):
     Subscriber callback function
     Returns button press event for Button1 in 3DS Haptic Touch Device
     """
-    global R_GRIP
+    global R_GRIP, PRESS1_R, mac_ANCH_R
     if msg.buttons[0] == 1:
-        # rospy.loginfo('Leader: Button1_R Engaged!')
-        if R_GRIP == 1:
-            R_GRIP = 0
-            # rospy.loginfo('Right Gripper: Opening')
-        else:
-            R_GRIP = 1
-            # rospy.loginfo('Right Gripper: Closing')
-    #     PRESS1_R = 1
-    # else:
-    #     # rospy.loginfo('Leader: Button1_R Disengaged!')
-    #     PRESS1_R = 0
-    #     ANCH_R = None
+        if PRESS2_R == 1:
+            if R_GRIP == 1:
+                R_GRIP = 0
+            else:
+                R_GRIP = 1
+        PRESS1_R = 1
+    else:
+        PRESS1_R = 0
+        mac_ANCH_R = None
 
 def sub5_cb(msg):
     """
     Subscriber callback function
     Returns button press event for Button2 in 3DS Haptic Touch Device
     """
-    global PRESS2_R, ANCH_R
+    global PRESS2_R, ANCH_R, R_GRIP
     if msg.buttons[0] == 1:
         # rospy.loginfo('Leader: Button2_R Engaged!')
+        if PRESS1_R == 1:
+            if R_GRIP == 1:
+                R_GRIP = 0
+            else:
+                R_GRIP = 1
         PRESS2_R = 1
     else:
         # rospy.loginfo('Leader: Button2_R Disengaged!')
@@ -164,8 +170,8 @@ def scale(pose):
     return PyKDL.Frame(PyKDL.Rotation.Rot(tmp_rot, rot_ang*or_SF), pose.p*cp_SF)
 
 def teleop_L():
-    global ANCH_L, TCP0_L, TCP0_L_ANCH, LEFT_POSE
-    if PRESS2_L == 1:
+    global ANCH_L, TCP0_L, TCP0_L_ANCH, LEFT_POSE, L_GRIP
+    if (PRESS2_L == 1) and (PRESS1_L == 0):
         if ANCH_L is not None:
             
             # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
@@ -189,10 +195,10 @@ def teleop_L():
             ROBOTBASE_L_TCP0 = PyKDL.Frame(TCP0_L.M)
 
             TCP0_L_ANCH = ROBOTBASE_L_TCP0.Inverse() * VIEWER_L_ROBOTBASE.Inverse() * VIEWER_L_ANCH
- 
+
 def teleop_R():
-    global ANCH_R, TCP0_R, TCP0_R_ANCH, RIGHT_POSE
-    if PRESS2_R == 1:
+    global ANCH_R, TCP0_R, TCP0_R_ANCH, RIGHT_POSE, R_GRIP
+    if (PRESS2_R == 1) and (PRESS1_R == 0):
         if ANCH_R is not None:
             
             # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
@@ -216,6 +222,72 @@ def teleop_R():
             ROBOTBASE_R_TCP0 = PyKDL.Frame(TCP0_R.M)
 
             TCP0_R_ANCH = ROBOTBASE_R_TCP0.Inverse() * VIEWER_R_ROBOTBASE.Inverse() * VIEWER_R_ANCH
+
+def teleop_vehicle():
+
+    global mac_ANCH_L, mac_ANCH_R
+    if (PRESS1_R == 1) and (PRESS1_L == 1) and (PRESS2_L == 0) and (PRESS2_R == 0):
+        if (mac_ANCH_L is None) or (mac_ANCH_R is None):
+            # reset both anchors
+            mac_ANCH_L = LEFT_POSE
+            mac_ANCH_R = RIGHT_POSE
+
+        else:
+            # Find the resultant vector for the right and left arm in the vehicle frame
+            left_cmd = list(VIEWER_L_ROBOTBASE.Inverse().M * VIEWER_L_HAPTIC.M * (LEFT_POSE.p - mac_ANCH_L.p))
+            right_cmd = list(VIEWER_R_ROBOTBASE.Inverse().M * VIEWER_R_HAPTIC.M * (RIGHT_POSE.p - mac_ANCH_R.p))
+            
+            pilot(left_cmd, right_cmd)
+    
+    else:
+        teleop_R()
+        teleop_L()
+
+def pilot(left, right):
+    # Determines which direction dominates from each haptic command - 0:x, 1:y, 2:z, {in the robot frame}
+    l_dir = dom_proj(left)
+    r_dir = dom_proj(right)
+    
+    if l_dir == r_dir:
+        cmd_vel = Twist()
+        if (left[l_dir] > 0 and right[r_dir] > 0):
+            if (l_dir == 0) and (abs(right[r_dir]) > 0.025) and (abs(left[l_dir]) > 0.025):      # Forward
+                cmd_vel.linear.x = 0.5
+                rospy.loginfo('Moving Front')
+                # pub4.publish(cmd_vel)
+            if (l_dir == 1) and (abs(right[r_dir]) > 0.050) and (abs(left[l_dir]) > 0.050):      # Strafe Left
+                cmd_vel.linear.y = 0.5
+                rospy.loginfo('Moving Left')
+            if (l_dir == 2) and (abs(right[r_dir]) > 0.050) and (abs(left[l_dir]) > 0.050):      # Go Up
+                cmd_vel.linear.z = 0.5
+                rospy.loginfo('Moving Up')
+
+        if (left[l_dir] < 0 and right[r_dir] < 0):
+            if (l_dir == 0) and (abs(right[r_dir]) > 0.025) and (abs(left[l_dir]) > 0.025):      # Backward
+                cmd_vel.linear.x = -0.5
+                rospy.loginfo('Moving Back')
+            if (l_dir == 1) and (abs(right[r_dir]) > 0.050) and (abs(left[l_dir]) > 0.050):      # Strafe Right
+                cmd_vel.linear.y = -0.5
+                rospy.loginfo('Moving Right')
+            if (l_dir == 2) and (abs(right[r_dir]) > 0.050) and (abs(left[l_dir]) > 0.050):      # Go Down
+                cmd_vel.linear.z = -0.5
+                rospy.loginfo('Moving Down')
+
+        if (left[l_dir] > 0 and right[r_dir] < 0):
+            if (l_dir == 0) and (abs(right[r_dir]) > 0.025) and (abs(left[l_dir]) > 0.025):      # Turn Right
+                cmd_vel.angular.z = -0.1
+                rospy.loginfo('Turning Right')
+
+        if (left[l_dir] < 0 and right[r_dir] > 0):
+            if (l_dir == 0) and (abs(right[r_dir]) > 0.025) and (abs(left[l_dir]) > 0.025):      # Turn Left
+                cmd_vel.angular.z = 0.1
+                rospy.loginfo('Turning Left')
+
+        pub4.publish(cmd_vel)
+
+def dom_proj(ctrl):
+    l = map(abs,ctrl)
+    return l.index(max(l))
 
 def gripper():
     """
@@ -248,11 +320,11 @@ if __name__ == '__main__':
     pub1 = rospy.Publisher('/Xd1', Float32MultiArray, queue_size=10)
     pub2 = rospy.Publisher('/Xd2', Float32MultiArray, queue_size=10)
     pub3 = rospy.Publisher('/grippers', Float32MultiArray, queue_size=10)
+    pub4 = rospy.Publisher('/rexrov/cmd_vel', Twist, queue_size=10)
 
     rate = rospy.Rate(100)
 
     while not rospy.is_shutdown():
-        teleop_L()
-        teleop_R()
+        teleop_vehicle()
         gripper()
         rate.sleep()
