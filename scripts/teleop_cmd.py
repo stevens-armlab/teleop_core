@@ -226,6 +226,8 @@ def teleop_R():
 def teleop_vehicle():
 
     global mac_ANCH_L, mac_ANCH_R
+    
+
     if (PRESS1_R == 1) and (PRESS1_L == 1) and (PRESS2_L == 0) and (PRESS2_R == 0):
         if (mac_ANCH_L is None) or (mac_ANCH_R is None):
             # reset both anchors
@@ -240,6 +242,8 @@ def teleop_vehicle():
             pilot(left_cmd, right_cmd)
     
     else:
+        cmd_vel = Twist()
+        pub4.publish(cmd_vel)
         teleop_R()
         teleop_L()
 
@@ -259,7 +263,7 @@ def pilot(left, right):
                 cmd_vel.linear.y = 0.5
                 rospy.loginfo('Moving Left')
             if (l_dir == 2) and (abs(right[r_dir]) > 0.050) and (abs(left[l_dir]) > 0.050):      # Go Up
-                cmd_vel.linear.z = 0.5
+                cmd_vel.linear.z = 0.3
                 rospy.loginfo('Moving Up')
 
         if (left[l_dir] < 0 and right[r_dir] < 0):
@@ -270,17 +274,17 @@ def pilot(left, right):
                 cmd_vel.linear.y = -0.5
                 rospy.loginfo('Moving Right')
             if (l_dir == 2) and (abs(right[r_dir]) > 0.050) and (abs(left[l_dir]) > 0.050):      # Go Down
-                cmd_vel.linear.z = -0.5
+                cmd_vel.linear.z = -0.3
                 rospy.loginfo('Moving Down')
 
         if (left[l_dir] > 0 and right[r_dir] < 0):
             if (l_dir == 0) and (abs(right[r_dir]) > 0.025) and (abs(left[l_dir]) > 0.025):      # Turn Right
-                cmd_vel.angular.z = -0.1
+                cmd_vel.angular.z = -0.15
                 rospy.loginfo('Turning Right')
 
         if (left[l_dir] < 0 and right[r_dir] > 0):
             if (l_dir == 0) and (abs(right[r_dir]) > 0.025) and (abs(left[l_dir]) > 0.025):      # Turn Left
-                cmd_vel.angular.z = 0.1
+                cmd_vel.angular.z = 0.15
                 rospy.loginfo('Turning Left')
 
         pub4.publish(cmd_vel)
