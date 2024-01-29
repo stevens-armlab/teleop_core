@@ -162,6 +162,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/follow_traj.py
   scripts/teleop_cmd.py
+  scripts/teleop_fr3.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
