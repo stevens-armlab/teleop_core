@@ -2,7 +2,7 @@
 
 import rospy
 from sensor_msgs.msg import Joy
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import Pose, PoseStamped, Twist
 from std_msgs.msg import Float32MultiArray
 import PyKDL
 from tf_conversions import posemath
@@ -70,6 +70,9 @@ def sub4_cb(msg):
     TCP_L = posemath.fromMsg(msg.pose)
 
 def teleop():
+    """
+    Teleoperation command generation
+    """
     global ANCH_L, TCP0_L, TCP0_L_ANCH, LEFT_POSE, L_GRIP
     
     if PRESS2_L == 1:
@@ -80,8 +83,7 @@ def teleop():
             # RELATIVE COMMANDED POSE [As represented in the Robot TCP0 frame]
             command = TCP0_L_ANCH * rel_cmd * TCP0_L_ANCH.Inverse()
             command = TCP0_L * command
-
-            # RESOLVED RATES
+            pub.publish(posemath.toMsg(command))
         else:
             TCP0_L = TCP_L
             ANCH_L = LEFT_POSE                   # Converts the pose message to a KDL frame
@@ -101,8 +103,10 @@ if __name__ == '__main__':
         sub1 = rospy.Subscriber("/arm/button1", Joy , callback=sub1_cb)
         sub2 = rospy.Subscriber("/arm/button2", Joy , callback=sub2_cb)
         sub3 = rospy.Subscriber("/arm/measured_cp", PoseStamped , callback=sub3_cb)
-        sub4 = rospy.Subscriber("/fr3_rel_cp", PoseStamped , callback=sub4_cb)
+        sub4 = rospy.Subscriber("/kin_fr3/cartesian_pose", PoseStamped , callback=sub4_cb)
 
+        pub = rospy.Publisher('/teleop_fr3/command', Pose, queue_size=50)
+        
         rate = rospy.Rate(100)
 
         while not rospy.is_shutdown():
@@ -110,4 +114,4 @@ if __name__ == '__main__':
             rate.sleep()
         
     except rospy.ROSInterruptException:
-        pass    
+        pass
