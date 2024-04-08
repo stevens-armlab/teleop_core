@@ -67,7 +67,7 @@ def sub4_cb(msg):
     Sets the TCP variable to a PyKDL frame of the Manipulators current pose
     """
     global TCP_L
-    TCP_L = posemath.fromMsg(msg.pose)
+    TCP_L = posemath.fromMsg(msg)
 
 def teleop():
     """
@@ -103,11 +103,11 @@ if __name__ == '__main__':
         sub1 = rospy.Subscriber("/arm/button1", Joy , callback=sub1_cb)
         sub2 = rospy.Subscriber("/arm/button2", Joy , callback=sub2_cb)
         sub3 = rospy.Subscriber("/arm/measured_cp", PoseStamped , callback=sub3_cb)
-        sub4 = rospy.Subscriber("/kin_fr3/cartesian_pose", PoseStamped , callback=sub4_cb)
+        sub4 = rospy.Subscriber("/direct_transform", Pose , callback=sub4_cb)
 
-        pub = rospy.Publisher('/teleop_fr3/command', Pose, queue_size=50)
+        pub = rospy.Publisher('/go_to_pose', Pose, queue_size=50)
         
-        rate = rospy.Rate(100)
+        rate = rospy.Rate(10)
 
         while not rospy.is_shutdown():
             teleop()
