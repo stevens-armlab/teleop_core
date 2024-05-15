@@ -114,7 +114,8 @@ if __name__ == '__main__':
         sub1 = rospy.Subscriber("/arm/button1", Joy , callback=sub1_cb)
         sub2 = rospy.Subscriber("/arm/button2", Joy , callback=sub2_cb)
         sub3 = rospy.Subscriber("/arm/measured_cp", PoseStamped , callback=sub3_cb)
-        sub4 = rospy.Subscriber("/p_7_position", PoseStamped , callback=sub4_cb)
+        sub4 = rospy.Subscriber("/p_idm_tip_position", PoseStamped , callback=sub4_cb)
+        # sub4 = rospy.Subscriber("/p_7_position", PoseStamped , callback=sub4_cb)
 
         pub = rospy.Publisher('/go_to_pose', PoseStamped, queue_size=50)
         
