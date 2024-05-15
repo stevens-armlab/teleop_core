@@ -9,7 +9,7 @@ from tf_conversions import posemath
 import numpy as np
 
 # Scaling Factor
-cp_SF = 1
+cp_SF = 2
 or_SF = 1
 
 # Haptic Device Poses
@@ -279,12 +279,12 @@ def pilot(left, right):
 
         if (left[l_dir] > 0 and right[r_dir] < 0):
             if (l_dir == 0) and (abs(right[r_dir]) > 0.025) and (abs(left[l_dir]) > 0.025):      # Turn Right
-                cmd_vel.angular.z = -0.15
+                cmd_vel.angular.z = -0.03
                 rospy.loginfo('Turning Right')
 
         if (left[l_dir] < 0 and right[r_dir] > 0):
             if (l_dir == 0) and (abs(right[r_dir]) > 0.025) and (abs(left[l_dir]) > 0.025):      # Turn Left
-                cmd_vel.angular.z = 0.15
+                cmd_vel.angular.z = 0.03
                 rospy.loginfo('Turning Left')
 
         pub4.publish(cmd_vel)
