@@ -32,6 +32,9 @@ TCP0_L_ANCH = None          # To be set during the anchoring event
 # Manipulator current pose
 TCP_L = None
 
+# FRAME ID
+FRAME_ID = None
+
 def sub1_cb(msg):
     """
     Subscriber callback function
@@ -59,16 +62,17 @@ def sub3_cb(msg):
     """
     Subscriber callback function
     """
-    global LEFT_POSE
+    global LEFT_POSE, FRAME_ID
     LEFT_POSE = posemath.fromMsg(msg.pose)
+    FRAME_ID = msg.header
 
 def sub4_cb(msg):
     """
-    Subscriber callback function to get the pose of the franka arm
+    Subscriber callback function to get the pose of the xArm7
     Sets the TCP variable to a PyKDL frame of the Manipulators current pose
     """
     global TCP_L
-    TCP_L = posemath.fromMsg(msg)
+    TCP_L = posemath.fromMsg(msg.pose)
 
 def teleop():
     """
@@ -84,11 +88,17 @@ def teleop():
             # RELATIVE COMMANDED POSE [As represented in the Robot TCP0 frame]
             command = TCP0_L_ANCH * rel_cmd * TCP0_L_ANCH.Inverse()
             command = TCP0_L * command
-            pub.publish(posemath.toMsg(command))
+            p = PoseStamped()
+            p.header = FRAME_ID
+            
+            p.pose = posemath.toMsg(command)
+            rospy.loginfo("Sending command!")
+            pub.publish(p)
+            # pass
         else:
             TCP0_L = TCP_L
             ANCH_L = LEFT_POSE                   # Converts the pose message to a KDL frame
-            
+            # print(ANCH_L)
             haptic_L_anch = PyKDL.Frame(ANCH_L.M)               # The Matrix that can rewrite the relative commanded pose to the haptic base frame
             VIEWER_L_ANCH = VIEWER_L_HAPTIC * haptic_L_anch     # The Matrix that can rewrite the relative commanded pose to the Viewer base frame
             ROBOTBASE_L_TCP0 = PyKDL.Frame(TCP0_L.M)
@@ -104,11 +114,11 @@ if __name__ == '__main__':
         sub1 = rospy.Subscriber("/arm/button1", Joy , callback=sub1_cb)
         sub2 = rospy.Subscriber("/arm/button2", Joy , callback=sub2_cb)
         sub3 = rospy.Subscriber("/arm/measured_cp", PoseStamped , callback=sub3_cb)
-        sub4 = rospy.Subscriber("/direct_transform", Pose , callback=sub4_cb)
+        sub4 = rospy.Subscriber("/p_7_position", PoseStamped , callback=sub4_cb)
 
-        pub = rospy.Publisher('/go_to_pose', Pose, queue_size=50)
+        pub = rospy.Publisher('/go_to_pose', PoseStamped, queue_size=50)
         
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(100)
 
         while not rospy.is_shutdown():
             teleop()
