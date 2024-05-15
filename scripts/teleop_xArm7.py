@@ -31,6 +31,7 @@ TCP0_L_ANCH = None          # To be set during the anchoring event
 
 # Manipulator current pose
 TCP_L = None
+ARM_POSE = None
 
 # FRAME ID
 FRAME_ID = None
@@ -62,23 +63,24 @@ def sub3_cb(msg):
     """
     Subscriber callback function
     """
-    global LEFT_POSE, FRAME_ID
+    global LEFT_POSE
     LEFT_POSE = posemath.fromMsg(msg.pose)
-    FRAME_ID = msg.header
 
 def sub4_cb(msg):
     """
     Subscriber callback function to get the pose of the xArm7
     Sets the TCP variable to a PyKDL frame of the Manipulators current pose
     """
-    global TCP_L
+    global TCP_L, ARM_POSE, FRAME_ID
     TCP_L = posemath.fromMsg(msg.pose)
+    ARM_POSE = msg
+    FRAME_ID = msg.header
 
 def teleop():
     """
     Teleoperation command generation
     """
-    global ANCH_L, TCP0_L, TCP0_L_ANCH, LEFT_POSE, L_GRIP
+    global ANCH_L, TCP0_L, TCP0_L_ANCH, LEFT_POSE, L_GRIP, ARM_POSE
     
     if PRESS2_L == 1:
         if ANCH_L is not None:
@@ -104,6 +106,9 @@ def teleop():
             ROBOTBASE_L_TCP0 = PyKDL.Frame(TCP0_L.M)
 
             TCP0_L_ANCH = ROBOTBASE_L_TCP0.Inverse() * VIEWER_L_ROBOTBASE.Inverse() * VIEWER_L_ANCH
+    else:
+        pub.publish(ARM_POSE)
+        # pass
 
 if __name__ == '__main__':
     try:
@@ -121,6 +126,7 @@ if __name__ == '__main__':
         
         rate = rospy.Rate(100)
 
+        rospy.sleep(2)
         while not rospy.is_shutdown():
             teleop()
             rate.sleep()
