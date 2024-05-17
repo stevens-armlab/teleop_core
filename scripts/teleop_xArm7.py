@@ -16,8 +16,8 @@ or_SF = 1
 LEFT_POSE = None
 
 # Button Press
-PRESS1_L = None
-PRESS2_L = None
+MODE_BUTTON = 0
+COMMAND_BUTTON = None
 
 # Rotation Frames
 VIEWER_L_HAPTIC = PyKDL.Frame(PyKDL.Rotation(1,0,0, 0,0,-1, 0,1,0))     # The Matrix that rewrites a vector in the haptic base frame, to a vector in the Viewer base frame
@@ -41,22 +41,27 @@ def sub1_cb(msg):
     Subscriber callback function
     Returns button press event for Button1 in 3DS Haptic Touch Device
     """
-    global PRESS1_L
+    global MODE_BUTTON
     if msg.buttons[0] == 1:
-        PRESS1_L = 1
+        if MODE_BUTTON == 0:
+            MODE_BUTTON = 1
+            rospy.loginfo("RCM position locked")
+        else:
+            MODE_BUTTON = 0
+            rospy.loginfo("RCM free to move")
     else:
-        PRESS1_L = 0
+        pass
 
 def sub2_cb(msg):
     """
     Subscriber callback function
     Returns button press event for Button2 in 3DS Haptic Touch Device
     """
-    global PRESS2_L, ANCH_L
+    global COMMAND_BUTTON, ANCH_L
     if msg.buttons[0] == 1:
-        PRESS2_L = 1
+        COMMAND_BUTTON = 1
     else:
-        PRESS2_L = 0
+        COMMAND_BUTTON = 0
         ANCH_L = None
 
 def sub3_cb(msg):
@@ -79,12 +84,20 @@ def sub4_cb(msg):
 def scale(pose):
     """
     Applies the rotational and translational scaling factor to the relative command
+
+    RCM: When the rcm position is locked, the position is scaled by a factor of 0
     """
     tmp_rot = pose.M.GetRot()
     rot_ang = tmp_rot.Normalize()
     if rot_ang != 0:
         tmp_rot = tmp_rot / rot_ang
-    return PyKDL.Frame(PyKDL.Rotation.Rot(tmp_rot, rot_ang*or_SF), pose.p*cp_SF)
+
+    if MODE_BUTTON == 0:
+        # RCM free to move
+        return PyKDL.Frame(PyKDL.Rotation.Rot(tmp_rot, rot_ang*or_SF), pose.p*cp_SF)
+    else:
+        # RCM position locked
+        return PyKDL.Frame(PyKDL.Rotation.Rot(tmp_rot, rot_ang*or_SF))
 
 def teleop():
     """
@@ -92,7 +105,7 @@ def teleop():
     """
     global ANCH_L, TCP0_L, TCP0_L_ANCH, LEFT_POSE, L_GRIP, ARM_POSE
     
-    if PRESS2_L == 1:
+    if COMMAND_BUTTON == 1:
         if ANCH_L is not None:
             # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
             rel_cmd = ANCH_L.Inverse() * LEFT_POSE
@@ -131,7 +144,8 @@ if __name__ == '__main__':
         sub2 = rospy.Subscriber("/arm/button2", Joy , callback=sub2_cb)
         sub3 = rospy.Subscriber("/arm/measured_cp", PoseStamped , callback=sub3_cb)
         # sub4 = rospy.Subscriber("/p_idm_tip_position", PoseStamped , callback=sub4_cb)
-        sub4 = rospy.Subscriber("/p_7_position", PoseStamped , callback=sub4_cb)
+        # sub4 = rospy.Subscriber("/p_7_position", PoseStamped , callback=sub4_cb)
+        sub4 = rospy.Subscriber("/rcm_pos", PoseStamped , callback=sub4_cb)
 
         pub = rospy.Publisher('/go_to_pose', PoseStamped, queue_size=50)
         
