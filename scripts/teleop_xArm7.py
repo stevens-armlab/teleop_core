@@ -9,7 +9,7 @@ from tf_conversions import posemath
 import numpy as np
 
 # Scaling Factor
-cp_SF = 1
+cp_SF = 5
 or_SF = 1
 
 # Haptic Device Poses
@@ -76,6 +76,16 @@ def sub4_cb(msg):
     ARM_POSE = msg
     FRAME_ID = msg.header
 
+def scale(pose):
+    """
+    Applies the rotational and translational scaling factor to the relative command
+    """
+    tmp_rot = pose.M.GetRot()
+    rot_ang = tmp_rot.Normalize()
+    if rot_ang != 0:
+        tmp_rot = tmp_rot / rot_ang
+    return PyKDL.Frame(PyKDL.Rotation.Rot(tmp_rot, rot_ang*or_SF), pose.p*cp_SF)
+
 def teleop():
     """
     Teleoperation command generation
@@ -86,6 +96,7 @@ def teleop():
         if ANCH_L is not None:
             # RELATIVE COMMANDED POSE [As represented in the Anchor frame]
             rel_cmd = ANCH_L.Inverse() * LEFT_POSE
+            rel_cmd = scale(rel_cmd)
 
             # RELATIVE COMMANDED POSE [As represented in the Robot TCP0 frame]
             command = TCP0_L_ANCH * rel_cmd * TCP0_L_ANCH.Inverse()
@@ -119,8 +130,8 @@ if __name__ == '__main__':
         sub1 = rospy.Subscriber("/arm/button1", Joy , callback=sub1_cb)
         sub2 = rospy.Subscriber("/arm/button2", Joy , callback=sub2_cb)
         sub3 = rospy.Subscriber("/arm/measured_cp", PoseStamped , callback=sub3_cb)
-        sub4 = rospy.Subscriber("/p_idm_tip_position", PoseStamped , callback=sub4_cb)
-        # sub4 = rospy.Subscriber("/p_7_position", PoseStamped , callback=sub4_cb)
+        # sub4 = rospy.Subscriber("/p_idm_tip_position", PoseStamped , callback=sub4_cb)
+        sub4 = rospy.Subscriber("/p_7_position", PoseStamped , callback=sub4_cb)
 
         pub = rospy.Publisher('/go_to_pose', PoseStamped, queue_size=50)
         
