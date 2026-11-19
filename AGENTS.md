@@ -112,31 +112,21 @@ Easy to miss: `libqt5xmlpatterns5-dev` (cisst won't find Qt5 without it), `swig`
 (cisst Python bindings), and `libgraphviz-dev` (cisst includes `cgraph.h`
 unconditionally).
 
-### 4. Clone the ROS driver stack
+### 4. Get the ROS driver stack
 
-Use this exact layout in the workspace `src/`. **sawSensablePhantom must be on `devel`.**
-cisst `main` removed the `cisstQt` library (commit 255d9b8b, June 2026), and only
-sawSensablePhantom `devel` (commit c06b376) has the matching CMake update. On `main`,
-`sensable_phantom` fails with *"cisst_FOUND to FALSE"*. Check whether upstream `main`
-has caught up before switching back.
+The driver repos are pinned submodules of the workspace
+(`src/cisst-saw/*`, `src/crtk/*`), at commits known to build together:
 
 ```bash
-cd ~/research/colcon_ws/src
-mkdir -p cisst-saw crtk
-git -C cisst-saw clone https://github.com/jhu-cisst/cisstNetlib.git
-git -C cisst-saw clone https://github.com/jhu-cisst/cisst.git
-git -C cisst-saw clone https://github.com/jhu-cisst/cisst-ros.git
-git -C cisst-saw clone https://github.com/jhu-saw/sawControllers.git
-git -C cisst-saw clone https://github.com/jhu-saw/sawKeyboard.git
-git -C cisst-saw clone -b devel https://github.com/jhu-saw/sawSensablePhantom.git
-git -C crtk clone https://github.com/collaborative-robotics/crtk_msgs.git
-git -C crtk clone https://github.com/collaborative-robotics/crtk_python_client.git
+cd ~/research/colcon_ws
+git submodule update --init --recursive
 ```
 
-Known-good commits: cisst `5ffd602c`, cisstNetlib `e8eb1f9`, cisst-ros `014c9ab`,
-sawControllers `b3b78f9`, sawKeyboard `c374200`, sawSensablePhantom `c06b376`,
-crtk_msgs `14b04fc`, crtk_python_client `d002e28`. If a fresh clone of `main`
-breaks, check out these commits.
+**Keep sawSensablePhantom on `devel`.** cisst `main` removed the `cisstQt` library
+(commit 255d9b8b, June 2026), and only sawSensablePhantom `devel` (commit c06b376)
+has the matching CMake update. On `main`, `sensable_phantom` fails with
+*"cisst_FOUND to FALSE"*. When you move any pinned commit, rebuild the full
+workspace before committing the new pointer.
 
 ### 5. Build
 
